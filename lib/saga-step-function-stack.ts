@@ -3,6 +3,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as sfn_tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 
 export class SagaStepFunctionStack extends Stack {
@@ -63,6 +64,87 @@ export class SagaStepFunctionStack extends Stack {
       resultPath: '$.CancelHotelReservationResult'
     }).addRetry({maxAttempts: 3})
     .next(bookingFailed);
+
+    const reserveHotel = new sfn_tasks.LambdaInvoke(this, 'ReserveHotel', {
+      lambdaFunction: this.reserveHotelLambda,
+      resultPath: '$.ReserveHotelResult'
+    }).addCatch(cancelHotelReservation, {
+      resultPath: '$.ReserveHotelError'
+    });
+
+    const cancelFlightReservation = new sfn_tasks.LambdaInvoke(this, 'CancelFlightReservation', {
+      lambdaFunction: this.cancelFlightLambda,
+      resultPath: '$.CancelFlightReservationResult'
+    }).addRetry({maxAttempts: 3})
+    .next(cancelHotelReservation);
+
+    const reserveFlight = new sfn_tasks.LambdaInvoke(this, 'ReserveFlight', {
+      lambdaFunction: this.reserveHotelLambda,
+      resultPath: '$.ReserveFlightResult'
+    }).addCatch(cancelFlightReservation, {
+      resultPath: '$.ReserveFlightError'
+    });
+
+    // Payment
+
+    const refundPayment = new sfn_tasks.LambdaInvoke(this, 'RefundPayment', {
+      lambdaFunction: this.refundPaymentLambda,
+      resultPath: '$.RefundPaymentResult'
+    }).addRetry({maxAttempts: 3})
+    .next(cancelFlightReservation);
+
+    const takePayment = new sfn_tasks.LambdaInvoke(this, 'TakePayment', {
+      lambdaFunction: this.takePaymentLambda,
+      resultPath: '$.TakePaymentResult'
+    }).addCatch(refundPayment, {
+      resultPath: '$.TakePaymentError'
+    });
+
+    // Confirm
+
+    const confirmHotelBooking = new sfn_tasks.LambdaInvoke(this, 'ConfirmHotelBooking', {
+      lambdaFunction: this.confirmHotelLambda,
+      resultPath: '$.ConfirmHotelBookingResult'
+    }).addCatch(refundPayment, {
+      resultPath: '$.ConfirmHotelBookingError'
+    });
+
+    const confirmFlight = new sfn_tasks.LambdaInvoke(this, 'ConfirmFlight', {
+      lambdaFunction: this.confirmFlightLambda,
+      resultPath: '$.ConfirmFlightResult'
+    }).addCatch(refundPayment, {
+      resultPath: '$.ConfirmFlightError'
+    });
+
+    // Step Function
+
+    const definition = sfn.Chain
+    .start(reserveHotel)
+    .next(reserveFlight)
+    .next(takePayment)
+    .next(confirmHotelBooking)
+    .next(confirmFlight)
+    .next(bookingSucceeded);
+
+    const saga = new sfn.StateMachine(this, 'BookingSaga', {
+      definition,
+      timeout: Duration.minutes(5)
+    });
+
+    const sagaLambda = new lambda.Function(this, 'sagaLambdaHandler', {
+      runtime: lambda.Runtime.NODEJS_12_X,
+      code: lambda.Code.fromAsset('lambda-fns'),
+      handler: 'sagaLambda.handler',
+      environment: {
+        statemachine_arn: saga.stateMachineArn
+      }
+    });
+
+    saga.grantStartExecution(sagaLambda);
+
+    new apigw.LambdaRestApi(this, 'SagaPatternsSingleTable', {
+      handler: sagaLambda
+    });
   }
 
   private createLambda(id: string, handler: string) {
