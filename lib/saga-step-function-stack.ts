@@ -7,6 +7,15 @@ export class SagaStepFunctionStack extends Stack {
   private table: dynamodb.Table;
 
   private reserveFlightLambda: lambda.Function;
+  private confirmFlightLambda: lambda.Function;
+  private cancelFlightLambda: lambda.Function;
+
+  private reserveHotelLambda: lambda.Function;
+  private confirmHotelLambda: lambda.Function;
+  private cancelHotelLambda: lambda.Function;
+
+  private takePaymentLambda: lambda.Function;
+  private refundPaymentLambda: lambda.Function;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -14,6 +23,8 @@ export class SagaStepFunctionStack extends Stack {
     this.dynamoDbSetup();
 
     this.flightFunctions();
+    this.hotelFunctions();
+    this.paymentFunctions();
   }
 
   private dynamoDbSetup() {
@@ -25,6 +36,19 @@ export class SagaStepFunctionStack extends Stack {
 
   private flightFunctions() {
     this.reserveFlightLambda = this.createLambda('reserveFlightLambdaHandler', 'flights/reserveFlight.handler');
+    this.confirmFlightLambda = this.createLambda('confirmFlightLambdaHandler', 'flights/confirmFlight.handler');
+    this.cancelFlightLambda = this.createLambda('cancelFlightLambdaHandler', 'flights/cancelFlight.handler');
+  }
+
+  private hotelFunctions() {
+    this.reserveHotelLambda = this.createLambda('reserveHotelLambdaHandler', 'hotel/reserveHotel.handler');
+    this.confirmHotelLambda = this.createLambda('confirmHotelLambdaHandler', 'hotel/confirmHotel.handler');
+    this.cancelHotelLambda = this.createLambda('cancelHotelLambdaHandler', 'hotel/cancelHotel.handler');
+  }
+
+  private paymentFunctions() {
+    this.takePaymentLambda = this.createLambda('takePaymentLambdaHandler', 'payment/takePayment.handler');
+    this.refundPaymentLambda = this.createLambda('refundPaymentLambdaHandler', 'payment/refundPayment.handler');
   }
 
   private createLambda(id: string, handler: string) {
