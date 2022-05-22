@@ -131,6 +131,8 @@ export class SagaStepFunctionStack extends Stack {
       timeout: Duration.minutes(5)
     });
 
+    // Backend
+
     const sagaLambda = new lambda.Function(this, 'sagaLambdaHandler', {
       runtime: lambda.Runtime.NODEJS_12_X,
       code: lambda.Code.fromAsset('lambda-fns'),
