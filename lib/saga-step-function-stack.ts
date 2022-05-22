@@ -1,6 +1,8 @@
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as sfn_tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 
 export class SagaStepFunctionStack extends Stack {
@@ -25,6 +27,7 @@ export class SagaStepFunctionStack extends Stack {
     this.flightFunctions();
     this.hotelFunctions();
     this.paymentFunctions();
+    this.sagaStepFunction();
   }
 
   private dynamoDbSetup() {
@@ -49,6 +52,17 @@ export class SagaStepFunctionStack extends Stack {
   private paymentFunctions() {
     this.takePaymentLambda = this.createLambda('takePaymentLambdaHandler', 'payment/takePayment.handler');
     this.refundPaymentLambda = this.createLambda('refundPaymentLambdaHandler', 'payment/refundPayment.handler');
+  }
+
+  private sagaStepFunction() {
+    const bookingFailed = new sfn.Fail(this, "Sorry, we couldn't make the booking.", {});
+    const bookingSucceeded = new sfn.Succeed(this, "We have made your booking");
+
+    const cancelHotelReservation = new sfn_tasks.LambdaInvoke(this, 'CancelHotelReservation', {
+      lambdaFunction: this.cancelHotelLambda,
+      resultPath: '$.CancelHotelReservationResult'
+    }).addRetry({maxAttempts: 3})
+    .next(bookingFailed);
   }
 
   private createLambda(id: string, handler: string) {
