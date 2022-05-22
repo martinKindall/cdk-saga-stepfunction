@@ -79,7 +79,7 @@ export class SagaStepFunctionStack extends Stack {
     .next(cancelHotelReservation);
 
     const reserveFlight = new sfn_tasks.LambdaInvoke(this, 'ReserveFlight', {
-      lambdaFunction: this.reserveHotelLambda,
+      lambdaFunction: this.reserveFlightLambda,
       resultPath: '$.ReserveFlightResult'
     }).addCatch(cancelFlightReservation, {
       resultPath: '$.ReserveFlightError'

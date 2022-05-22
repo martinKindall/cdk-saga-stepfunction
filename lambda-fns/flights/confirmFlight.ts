@@ -9,6 +9,9 @@ exports.handler = async function(event:any) {
       throw new Error('Failed to book the flights');
   }
 
+  // Here we should do a validation to the reserved flight before confirming it
+  // TODO
+
   let bookingID = '';
   if (typeof event.ReserveFlightResult !== 'undefined') {
       bookingID = event.ReserveFlightResult.Payload.booking_id;
