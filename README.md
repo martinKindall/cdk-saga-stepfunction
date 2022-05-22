@@ -1,9 +1,28 @@
-# Welcome to your CDK TypeScript project
+# CDK Patterns - Saga Step Function
 
-You should explore the contents of this project. It demonstrates a CDK app with an instance of a stack (`SagaStepFunctionStack`)
-which contains an Amazon SQS queue that is subscribed to an Amazon SNS topic.
+The original proyect: https://github.com/cdk-patterns/serverless/blob/main/the-saga-stepfunction/README.md
+This is just a rewrite using CDK 2.X.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Deploy
+
+```bash
+npm run build
+cdk deploy
+```
+
+## Usage
+
+```
+Successful Execution - https://{api gateway url}
+Reserve Hotel Fail - https://{api gateway url}?runType=failHotelReservation
+Confirm Hotel Fail - https://{api gateway url}?runType=failHotelConfirmation
+Reserve Flight Fail - https://{api gateway url}?runType=failFlightsReservation
+Confirm Flight Fail - https://{api gateway url}?runType=failFlightsConfirmation
+Take Payment Fail - https://{api gateway url}?runType=failPayment
+
+Inserting Muliple trips into DynamoDB, by default it will use the same ID on every execution
+https://{api gateway url}?tripID={whatever you want}
+```
 
 ## Useful commands
 
